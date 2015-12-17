@@ -8,8 +8,6 @@ if __name__ == "__main__":
     mongoDbClient = MongoClient()
     objDatabaseInstance = mongoDbClient.DevicesData
     objFitbitCollection = objDatabaseInstance.FitbitData.find()
-    # objFitbitCollection = objDatabaseInstance.FitbitData.delete_one({"user_id" : "diabetesresearchtamu@gmail.com"})
-    # objFitbitCollection = objDatabaseInstance.FitbitData.delete_one({"user_id" : "vivektyagi.nith@gmail.com"})
 
     #Getting data from fitbit
     users = ["diabetesresearchtamu@gmail.com", "vivektyagi.nith@gmail.com"]
@@ -22,14 +20,8 @@ if __name__ == "__main__":
 
 
         if objFitbitUserDocument.count() > 0:                     #Need to update data
-            if objDatabaseInstance.FitbitData.find({"data.date": objFitbitAPIInstance.DATE}).count() == 0:
+            if objDatabaseInstance.FitbitData.find({"data.date": objFitbitAPIInstance.DATE, "user_id" : user}).count() == 0:
                 objDatabaseInstance.FitbitData.update({"user_id" : user}, {"$push" : { "data": dataFromFitbit[user]}})
             #Data already there, todo: updated data should be pushed
         else:                                               #fresh insertion
             objDatabaseInstance.FitbitData.insert_one({"user_id": user, "data" : [dataFromFitbit[user]]})
-
-    objFitbitCollection = objDatabaseInstance.FitbitData.find()
-    for d in objFitbitCollection:
-        print d
-        print
-        print

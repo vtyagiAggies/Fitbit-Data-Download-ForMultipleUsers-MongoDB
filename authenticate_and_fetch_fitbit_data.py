@@ -1,17 +1,14 @@
 #!/usr/bin/python
 import fitbit
 import webbrowser
-import os
-import csv
-import time
 import datetime
-
+from pymongo import MongoClient
 
 class AuthenticateAndFetchFitbitData():
     def __init__(self):
         self.f = fitbit.FitBit()
         self.data = {}
-        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        yesterday = datetime.datetime.now()     - datetime.timedelta(days=1)
         self.DATE = yesterday.strftime("%Y-%m-%d")  #The date in the format yyyy-MM-dd or today
 
     def MakeApiCall(self,token, apistring, user):
@@ -34,67 +31,39 @@ class AuthenticateAndFetchFitbitData():
             self.Reauthenticate(bad_token, name) #If bad PIN try again
         return access_token_new
 
-    def getData(self,objUsername):
-        mainfile= '%s.csv' % self.f.TOKENFILENAME #Read from .ini file by fitbit module
-        tmpfile= '%s.tmp.csv' % self.f.TOKENFILENAME
-        read_token=open(mainfile,'rU')
-        csvreader = csv.reader(read_token, dialect='excel', quotechar="'", delimiter=',')
-        try:
-            accesstokensfile = {rows[0]:rows[1] for rows in csvreader}
-        except IndexError:
-            ## Need to file read position or else we miss the first input
-            read_token.seek(0)
-            accesstokensfile = {rows[0]:rows[0] for rows in csvreader}
-            ## Assign blank values to all missing keys
-            for key in accesstokensfile.keys():
-                accesstokensfile[key] = ''
-        NamesList = accesstokensfile.keys()
-        access_token = accesstokensfile.values()
-        ## Remove temporary csv file if it exists
-        try:
-            os.remove(tmpfile)
-        except OSError:
-            ## Do nothing - if the tmp file doesn't exist we are happy
-            pass
+    def getTokensFromDB(self, users):
+        result = {}
+        mongoDbClient = MongoClient()
+        objDatabaseInstance = mongoDbClient.DevicesData
+        for user in users:
+            objFitbitAuthenticationCollection = objDatabaseInstance.FitbitAuthenticationData.find({"user_id" :  user})
+            if objFitbitAuthenticationCollection.count() == 0 :
+                result[user] = ""
+            else:
+                for document in objFitbitAuthenticationCollection:
+                    result[user] = document["token"]
+        return result
+
+    def setTokensToDB(self, user, token):
+        mongoDbClient = MongoClient()
+        objDatabaseInstance = mongoDbClient.DevicesData
+        objFitbitAuthenticationCollection = objDatabaseInstance.FitbitAuthenticationData.find({"user_id" : user})
+        if objFitbitAuthenticationCollection.count() == 0 :
+            objDatabaseInstance.FitbitAuthenticationData.insert_one({"user_id" : user, "token" : token})
+        else:
+            objDatabaseInstance.FitbitAuthenticationData.update({"user_id" : user}, {"token" : token })
+
+    def getData(self,objUsersname):
 
         APISTRING = '/1/user/-/activities/date/' + self.DATE + '.json'
+        access_tokens = self.getTokensFromDB(objUsersname)
 
-
-        n=0
-        # NamesList = objUsername
-        write_token = open(tmpfile, 'wb')
-        csvwriter = csv.writer(write_token)
-        for value in NamesList:
+        for value in objUsersname:
             try:
-                self.MakeApiCall(access_token[n], APISTRING,value)
-                csvwriter.writerow([value, access_token[n]])
+                self.MakeApiCall(access_tokens[value], APISTRING,value)
             except ValueError:
-                new_token = self.Reauthenticate(access_token[n], value)
+                new_token = self.Reauthenticate(access_tokens[value], value)
                 print "For user %s new access token = %s." % (value, new_token)
                 self.MakeApiCall(new_token, APISTRING, value)
-                csvwriter.writerow([value, new_token])
-            n=n+1
-
-        write_token.flush()
-        write_token.close()
-        read_token.close()
-
-        i=0
-        mainfile_new = mainfile
-        while True :
-            try:
-                if mainfile == mainfile_new:
-                    os.remove(mainfile_new)
-                os.rename(tmpfile,mainfile_new)
-                if mainfile != mainfile_new:
-                    print "New file '" + mainfile_new + "' has been created!"
-                break
-            except OSError:
-                if mainfile_new == mainfile:
-                    print "Unable to access file '" + mainfile_new + "', please make sure that this file is NOT open on your computer"
-                    choice = raw_input("Press 1 to retry access to '" + mainfile_new + "', or press any other key to write to a new file: ")
-                    if choice in ('1',''):
-                        continue
-                mainfile_new = str(i) + '.' + mainfile
-                i += 1
+                self.setTokensToDB(value, new_token)
         return self.data
