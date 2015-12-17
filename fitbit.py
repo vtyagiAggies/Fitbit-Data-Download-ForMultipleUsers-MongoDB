@@ -70,34 +70,3 @@ class FitBit():
         resp = connection.getresponse() 
         response = resp.read() 
         return response
-    
-    def PickApiCall(self):
-        """Presents user with options and returns specific FitBit API string selected as a string. See FitBit API docs for specific call syntax."""      
-        calls = ['/1/user/-/profile.xml', '/1/user/-/devices.xml', '/1/user/-/activities/steps/date/today/7d.xml', 'built dynamically'] # profile data, device data, last 7 days steps
-        desc = ['User profile data.', 'Device data (incl. last upload).', 'Last 7 days\' steps.', 'Steps for specific date range.']
-        for i in range(len(desc)):
-            e = desc[i]
-            print '%i. %s' % (i+1, e) # i+1 makes the list appear 1,2,3 to user rather than 0-based index 
-        prompt = ""
-        while True: #ensures integer is selected
-            try:
-                prompt = int(raw_input('Select an API call by number:'))
-                if int(prompt) < 1 or int(prompt) > len(desc):
-                    print 'Invalid selection. Last 7 days steps selected by default.'
-                    prompt = 3 #if out of bounds default to last 7 days data
-                break
-            except ValueError:
-                print 'Please select a valid number from the list. Try again ...'
-        if prompt == 4: # Should change this to verify string rather than index in case list changes.
-            while True:
-                try: #Checks is string can be formatted as a time - ie is it in correct format
-                    startdate = time.strptime(raw_input('Enter desired start date (mm/dd/yyyy): '), "%m/%d/%Y")
-                    enddate = time.strptime(raw_input('Enter desired end date (mm/dd/yyyy): '), "%m/%d/%Y")
-                    #THIS TEST REFORMATS startdate & enddate AS A struc_time OBJECT. MUST CONVERT BACK TO STRING FOR USE IN API CALL.
-                    break
-                except ValueError:
-                    print 'Entered date does not match mm/dd/yyyy format. Try again.'
-            apistring = '/1/user/-/activities/steps/date/' + time.strftime("%Y-%m-%d",startdate) + '/' + time.strftime("%Y-%m-%d",enddate) + '.xml' #time.strftime converts struc_time back to string in proper format
-        else:
-            apistring = calls[int(prompt)-1] # -1 brings the chosen base-1 index back to base-0 of list
-        return apistring
