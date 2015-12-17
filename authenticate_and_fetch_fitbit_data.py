@@ -4,18 +4,19 @@ import webbrowser
 import os
 import csv
 import time
+import datetime
 
 
 class AuthenticateAndFetchFitbitData():
     def __init__(self):
         self.f = fitbit.FitBit()
         self.data = {}
-        self.DATE = 'today'
+        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
+        self.DATE = yesterday.strftime("%Y-%m-%d")  #The date in the format yyyy-MM-dd or today
 
     def MakeApiCall(self,token, apistring, user):
-        response = self.f.ApiCall(token, apistring)
-        date = time.strftime("%d/%m/%Y")
-        temp = {"date" : date, "data": response}
+        response = self.f.ApiCall(token, apistring)             #Caluclating for yesterday
+        temp = {"date" : self.DATE, "todaysummary": response}
         self.data[user] = temp
 
     def Reauthenticate(self, bad_token, name):
