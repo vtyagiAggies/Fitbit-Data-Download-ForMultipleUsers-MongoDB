@@ -4,13 +4,14 @@ import authenticate_and_fetch_fitbit_data
 import time
 
 if __name__ == "__main__":
+
     #Setting up MongDB connection and database: DevicesData & collection: FitbitData
     mongoDbClient = MongoClient()
     objDatabaseInstance = mongoDbClient.DevicesData
     objFitbitCollection = objDatabaseInstance.FitbitData.find()
 
     #Getting data from fitbit
-    users = ["diabetesresearchtamu@gmail.com", "vivektyagi.nith@gmail.com"]
+    users = ["diabetesresearchtamu@gmail.com", "vivektyagi.nith@gmail.com", "aadiuppal@tamu.edu"]
     objFitbitAPIInstance = authenticate_and_fetch_fitbit_data.AuthenticateAndFetchFitbitData()
     dataFromFitbit = objFitbitAPIInstance.getData(users)
 

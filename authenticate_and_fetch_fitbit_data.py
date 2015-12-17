@@ -3,6 +3,7 @@ import fitbit
 import webbrowser
 import datetime
 from pymongo import MongoClient
+from Crypto.Cipher import AES
 
 class AuthenticateAndFetchFitbitData():
     def __init__(self):
@@ -15,6 +16,17 @@ class AuthenticateAndFetchFitbitData():
         response = self.f.ApiCall(token, apistring)             #Caluclating for yesterday
         temp = {"date" : self.DATE, "todaysummary": response}
         self.data[user] = temp
+
+
+    def encrypt(self, plain_text):
+        encryption_suite = AES.new('Key ResearchTAMU', AES.MODE_CFB, 'This is an IV456')  #16 bit key
+        cipher_text = encryption_suite.encrypt(plain_text)
+        return cipher_text.encode('base64','strict')
+
+    def decrypt(self, cipher_text):
+        decryption_suite = AES.new('Key ResearchTAMU', AES.MODE_CFB, 'This is an IV456')    #16 bit key
+        plain_text = decryption_suite.decrypt(cipher_text.decode('base64','strict'))
+        return plain_text
 
     def Reauthenticate(self, bad_token, name):
         """Called if the currently stored token is not accepted for a user OR if token is missing. Receives the old token which may be null and the user name. Returns new valid token."""
@@ -41,7 +53,7 @@ class AuthenticateAndFetchFitbitData():
                 result[user] = ""
             else:
                 for document in objFitbitAuthenticationCollection:
-                    result[user] = document["token"]
+                    result[user] = self.decrypt(document["token"])
         return result
 
     def setTokensToDB(self, user, token):
@@ -49,9 +61,9 @@ class AuthenticateAndFetchFitbitData():
         objDatabaseInstance = mongoDbClient.DevicesData
         objFitbitAuthenticationCollection = objDatabaseInstance.FitbitAuthenticationData.find({"user_id" : user})
         if objFitbitAuthenticationCollection.count() == 0 :
-            objDatabaseInstance.FitbitAuthenticationData.insert_one({"user_id" : user, "token" : token})
+            objDatabaseInstance.FitbitAuthenticationData.insert_one({"user_id" : user, "token" : self.encrypt(token)})
         else:
-            objDatabaseInstance.FitbitAuthenticationData.update({"user_id" : user}, {"token" : token })
+            objDatabaseInstance.FitbitAuthenticationData.update({"user_id" : user}, {"token" : self.encrypt(token) })
 
     def getData(self,objUsersname):
 
@@ -67,3 +79,4 @@ class AuthenticateAndFetchFitbitData():
                 self.MakeApiCall(new_token, APISTRING, value)
                 self.setTokensToDB(value, new_token)
         return self.data
+
