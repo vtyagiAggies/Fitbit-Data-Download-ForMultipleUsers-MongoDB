@@ -4,18 +4,23 @@ import webbrowser
 import datetime
 from pymongo import MongoClient
 from Crypto.Cipher import AES
+from fitbit import Global
 
 class AuthenticateAndFetchFitbitData():
     def __init__(self):
         self.f = fitbit.FitBit()
         self.data = {}
-        yesterday = datetime.datetime.now()     - datetime.timedelta(days=1)
-        self.DATE = yesterday.strftime("%Y-%m-%d")  #The date in the format yyyy-MM-dd or today
+        for user in Global.USERS.split(','):
+            self.data[user] = {}
+
+        self.DATE = []
+        for i in range(int(Global.DAYS)):
+            date = datetime.datetime.now()     - datetime.timedelta(days= (i+1))
+            self.DATE += [date.strftime("%Y-%m-%d")]  #The date in the format yyyy-MM-dd or today
 
     def MakeApiCall(self,token, apistring, user):
-        response = self.f.ApiCall(token, apistring)             #Caluclating for yesterday
-        temp = {"date" : self.DATE, "todaysummary": response}
-        self.data[user] = temp
+        response = self.f.ApiCall(token, apistring)
+        return response
 
 
     def encrypt(self, plain_text):
@@ -68,16 +73,29 @@ class AuthenticateAndFetchFitbitData():
 
     def getData(self,objUsersname):
 
-        APISTRING = '/1/user/-/activities/date/' + self.DATE + '.json'
+
         access_tokens = self.getTokensFromDB(objUsersname)
 
-        for value in objUsersname:
-            try:
-                self.MakeApiCall(access_tokens[value], APISTRING,value)
-            except ValueError:
-                new_token = self.Reauthenticate(access_tokens[value], value)
-                print "For user %s new access token = %s." % (value, new_token)
-                self.MakeApiCall(new_token, APISTRING, value)
-                self.setTokensToDB(value, new_token)
+        for user in objUsersname:
+            for date in self.DATE:
+                objAPIString = '/1/user/-/activities/date/' + date + '.json'
+                objAPIStringForFood = '/1/user/-/foods/log/caloriesIn/date/' + date + '/1d.json'
+                objAPIStringForWater = '/1/user/-/foods/log/water/date/' + date + '/1d.json'
+                try:
+                    response = self.MakeApiCall(access_tokens[user], objAPIString,user)
+                    response += "," + self.MakeApiCall(access_tokens[user], objAPIStringForFood,user)
+                    response += "," + self.MakeApiCall(access_tokens[user], objAPIStringForWater,user)
+                except ValueError:
+                    new_token = self.Reauthenticate(access_tokens[user], user)
+                    print "For user %s new access token = %s." % (user, new_token)
+                    response = self.MakeApiCall(new_token, objAPIString, user)
+                    response += "," + self.MakeApiCall(new_token, objAPIStringForFood,user)
+                    response += "," + self.MakeApiCall(new_token, objAPIStringForWater,user)
+                    access_tokens[user] = new_token
+                    self.setTokensToDB(user, new_token)
+
+                temp = {"date" : date, "todaysummary": response}
+                print "Collected data for user: %s for date: %s"%(user,date)
+                self.data[user][date] = temp
         return self.data
 
