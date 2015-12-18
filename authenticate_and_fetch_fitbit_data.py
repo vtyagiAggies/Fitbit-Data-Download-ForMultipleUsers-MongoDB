@@ -30,10 +30,11 @@ class AuthenticateAndFetchFitbitData():
 
     def Reauthenticate(self, bad_token, name):
         """Called if the currently stored token is not accepted for a user OR if token is missing. Receives the old token which may be null and the user name. Returns new valid token."""
+        print
         print "Stored access token %s not accepted for user %s. Reauthenticating. \n" % (bad_token, name)
         auth_url, auth_token = self.f.GetRequestToken()
         webbrowser.open(auth_url)
-        PIN = raw_input("\n Please paste the PIN that is returned from Fitbit [ENTER]: ")
+        PIN = raw_input(" Please paste the PIN that is returned from Fitbit [ENTER]: ")
         #if the PIN is not 26 characters, prompt user - in testing all PINs have been 25 or 26 characters
         if len(PIN) < 25:
             PIN = raw_input("\n Please confirm that you have entered the correct PIN returned from the Fitbit website and repaste here.[ENTER]: ")

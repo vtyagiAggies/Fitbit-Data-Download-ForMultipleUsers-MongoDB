@@ -7,7 +7,8 @@ if __name__ == "__main__":
 
     #Setting up MongDB connection and database: DevicesData & collection: FitbitData
     mongoDbClient = MongoClient()
-    objDatabaseInstance = mongoDbClient.DevicesData
+    db = "DevicesData"
+    objDatabaseInstance = mongoDbClient.get_database(db)
     objFitbitCollection = objDatabaseInstance.FitbitData.find()
 
     #Getting data from fitbit
@@ -18,7 +19,6 @@ if __name__ == "__main__":
 
     for user in users:
         objFitbitUserDocument = objDatabaseInstance.FitbitData.find({"user_id" : user})    #Document is MongoDB terminology
-
 
         if objFitbitUserDocument.count() > 0:                     #Need to update data
             if objDatabaseInstance.FitbitData.find({"data.date": objFitbitAPIInstance.DATE, "user_id" : user}).count() == 0:
